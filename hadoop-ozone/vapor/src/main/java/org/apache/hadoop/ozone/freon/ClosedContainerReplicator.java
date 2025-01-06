@@ -153,9 +153,13 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
       }
 
     }
+    if (replicationTasks.isEmpty()) {
+      throw new IllegalStateException("No closed containers found");
+    }
+    long minTestNo = Math.min(replicationTasks.size(), getTestNo());
 
     //important: override the max number of tasks.
-    setTestNo(replicationTasks.size());
+    setTestNo(minTestNo);
 
     init();
 
@@ -235,7 +239,7 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
               },
               // Since this a Freon tool, this instance is not part of a running datanode.
               new ContainerChecksumTreeManager(conf));
-      handler.setClusterID(UUID.randomUUID().toString());
+      handler.setClusterID(clusterID);
       handlers.put(containerType, handler);
     }
 
