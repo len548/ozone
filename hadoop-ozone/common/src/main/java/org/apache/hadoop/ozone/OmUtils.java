@@ -341,6 +341,8 @@ public final class OmUtils {
     case QuotaRepair:
     case PutObjectTagging:
     case DeleteObjectTagging:
+    case GetS3TemporarySecret:
+    case RevokeS3TemporarySecret:
     case UnknownCommand:
       return false;
     case EchoRPC:

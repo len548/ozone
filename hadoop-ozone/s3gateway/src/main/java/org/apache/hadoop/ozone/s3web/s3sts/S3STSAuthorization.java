@@ -54,7 +54,6 @@ public class S3STSAuthorization implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext context) throws IOException {
     try {
-      LOG.info("REN: Authorization filter invoked");
       signatureInfo.initialize(signatureProcessor.parseSignature());
       if (signatureInfo.getVersion() == SignatureInfo.Version.V4) {
         signatureInfo.setStrToSign(
@@ -66,8 +65,6 @@ public class S3STSAuthorization implements ContainerRequestFilter {
       }
 
       String awsAccessId = signatureInfo.getAwsAccessId();
-      LOG.info("REN: signature: {}, strToSign: {}, awsAccessId: {}",
-          signatureInfo.getSignature(), signatureInfo.getStringToSign(), awsAccessId);
       if (awsAccessId == null || awsAccessId.equals("")) {
         LOG.debug("Malformed s3 header. awsAccessID: {}", awsAccessId);
         throw ACCESS_DENIED;

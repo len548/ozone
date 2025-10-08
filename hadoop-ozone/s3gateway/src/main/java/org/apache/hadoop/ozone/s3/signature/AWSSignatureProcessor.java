@@ -110,6 +110,9 @@ public class AWSSignatureProcessor implements SignatureProcessor {
 
   private String getPayloadHash(Map<String, String> headers, SignatureInfo signatureInfo)
       throws OS3Exception, NoSuchAlgorithmException, IOException {
+    if (signatureInfo.getVersion() == Version.V2) {
+      return "";
+    }
     if (signatureInfo.getService().equals("s3")) {
       if (!signatureInfo.isSignPayload()) {
         // According to AWS Signature V4 documentation using Query Parameters
