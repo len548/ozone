@@ -48,6 +48,8 @@ public class S3STSEndpointBase implements Auditor {
   private SignatureInfo signatureInfo;
 
   private S3Auth s3Auth;
+  // Test-only override to inject a ClientProtocol without JAX-RS lifecycle
+  private ClientProtocol clientProtocolOverride;
 
   protected static final AuditLogger AUDIT =
       new AuditLogger(AuditLoggerType.S3GLOGGER);
@@ -56,14 +58,10 @@ public class S3STSEndpointBase implements Auditor {
     s3Auth = new S3Auth(signatureInfo.getStringToSign(),
         signatureInfo.getSignature(),
         signatureInfo.getAwsAccessId(), signatureInfo.getAwsAccessId());
-    ClientProtocol clientProtocol =
-        getClient().getObjectStore().getClientProxy();
+    ClientProtocol clientProtocol = clientProtocolOverride != null
+        ? clientProtocolOverride
+        : getClient().getObjectStore().getClientProxy();
     clientProtocol.setThreadLocalS3Auth(s3Auth);
-  }
-
-  // TODO:
-  protected String userNameFromRequest() {
-    return s3Auth.getAccessID();
   }
 
   private AuditMessage.Builder auditMessageBaseBuilder(AuditAction op,
@@ -106,6 +104,16 @@ public class S3STSEndpointBase implements Auditor {
   @VisibleForTesting
   public void setContext(ContainerRequestContext context) {
     this.context = context;
+  }
+
+  @VisibleForTesting
+  public void setSignatureInfo(SignatureInfo signatureInfo) {
+    this.signatureInfo = signatureInfo;
+  }
+
+  @VisibleForTesting
+  public void setClientProtocol(ClientProtocol clientProtocol) {
+    this.clientProtocolOverride = clientProtocol;
   }
 
   protected Map<String, String> getAuditParameters() {

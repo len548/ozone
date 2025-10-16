@@ -21,16 +21,14 @@ import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_S3_ADMINISTRATORS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneClientStub;
 import org.apache.hadoop.ozone.s3.OzoneConfigurationHolder;
+import org.apache.hadoop.ozone.s3.signature.SignatureInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -41,7 +39,6 @@ import org.mockito.Mock;
 public class TestSTS {
   private OzoneClient clientStub;
   private S3STSEndpoint endpoint;
-  private HttpHeaders httpHeaders;
 
   @Mock
   private ContainerRequestContext context;
@@ -52,13 +49,16 @@ public class TestSTS {
     config.set(OZONE_S3_ADMINISTRATORS, "test-user");
     OzoneConfigurationHolder.setConfiguration(config);
     clientStub = new OzoneClientStub();
-    httpHeaders = mock(HttpHeaders.class);
-    when(httpHeaders.getHeaderString("Authorization"))
-        .thenReturn("AWS4-HMAC-SHA256 Credential=test-user/20240709/us-east-1/s3/aws4_request, "
-            + "SignedHeaders=host;x-amz-date, Signature=some-signature");
     endpoint = new S3STSEndpoint();
     endpoint.setClient(clientStub);
     endpoint.setContext(context);
+    endpoint.setClientProtocol(clientStub.getProxy());
+    SignatureInfo signatureInfo = new SignatureInfo.Builder(SignatureInfo.Version.V4)
+        .setAwsAccessId("test-user")
+        .setSignature("some-signature")
+        .setStringToSign("dummy-string")
+        .build();
+    endpoint.setSignatureInfo(signatureInfo);
   }
 
   @Test
