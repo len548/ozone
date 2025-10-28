@@ -366,6 +366,10 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private static final AuditLogger SYSTEMAUDIT = new AuditLogger(
       AuditLoggerType.OMSYSTEMLOGGER);
 
+  private static final String AUDIT_PARAM_LEADER_ID = "leaderId";
+  private static final String AUDIT_PARAM_TERM = "term";
+  private static final String AUDIT_PARAM_LAST_APPLIED_INDEX = "lastAppliedIndex";
+
   private static final String OM_DAEMON = "om";
   private static final String NO_LEADER_ERROR_MESSAGE =
           "There is no leader among the Ozone Manager servers. If this message " +
@@ -422,7 +426,6 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private final OMStorage omStorage;
   private ObjectName omInfoBeanName;
   private Timer metricsTimer;
-  private ScheduleOMMetricsWriteTask scheduleOMMetricsWriteTask;
   private static final ObjectWriter WRITER =
       new ObjectMapper().writerWithDefaultPrettyPrinter();
   private static final ObjectReader READER =
@@ -552,7 +555,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       this.omNodeDetails = OMHANodeDetails.getOMNodeDetailsForNonHA(conf,
           omNodeDetails.getServiceId(),
           omStorage.getOmId(), omNodeDetails.getRpcAddress(),
-          omNodeDetails.getRatisPort());
+          omNodeDetails.getRatisPort(), omNodeDetails.isRatisListener());
     }
     this.threadPrefix = omNodeDetails.threadNamePrefix();
     loginOMUserIfSecurityEnabled(conf);
@@ -1894,7 +1897,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     // Schedule save metrics
     long period = configuration.getTimeDuration(OZONE_OM_METRICS_SAVE_INTERVAL,
         OZONE_OM_METRICS_SAVE_INTERVAL_DEFAULT, TimeUnit.MILLISECONDS);
-    scheduleOMMetricsWriteTask = new ScheduleOMMetricsWriteTask();
+    ScheduleOMMetricsWriteTask scheduleOMMetricsWriteTask = new ScheduleOMMetricsWriteTask();
     metricsTimer = new Timer();
     metricsTimer.schedule(scheduleOMMetricsWriteTask, 0, period);
 
@@ -1976,7 +1979,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     // Schedule save metrics
     long period = configuration.getTimeDuration(OZONE_OM_METRICS_SAVE_INTERVAL,
         OZONE_OM_METRICS_SAVE_INTERVAL_DEFAULT, TimeUnit.MILLISECONDS);
-    scheduleOMMetricsWriteTask = new ScheduleOMMetricsWriteTask();
+    ScheduleOMMetricsWriteTask scheduleOMMetricsWriteTask = new ScheduleOMMetricsWriteTask();
     metricsTimer = new Timer();
     metricsTimer.schedule(scheduleOMMetricsWriteTask, 0, period);
 
@@ -2245,7 +2248,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     }
     omRatisServer.addRaftPeer(newOMNodeDetails);
     peerNodesMap.put(newOMNodeId, newOMNodeDetails);
-    LOG.info("Added OM {} to the Peer list.", newOMNodeId);
+    LOG.info("Added OM {}: {} to the Peer list.", newOMNodeId, newOMNodeDetails);
   }
 
   /**
@@ -2424,7 +2427,6 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       if (metricsTimer != null) {
         metricsTimer.cancel();
         metricsTimer = null;
-        scheduleOMMetricsWriteTask = null;
       }
       omRpcServer.stop();
       if (isOmGrpcServerEnabled) {
@@ -3047,6 +3049,8 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
             .setQuotaInBytes(realBucket.getQuotaInBytes())
             .setQuotaInNamespace(realBucket.getQuotaInNamespace())
             .setUsedBytes(realBucket.getUsedBytes())
+            .setSnapshotUsedBytes(realBucket.getSnapshotUsedBytes())
+            .setSnapshotUsedNamespace(realBucket.getSnapshotUsedNamespace())
             .setUsedNamespace(realBucket.getUsedNamespace())
             .addAllMetadata(realBucket.getMetadata())
             .setBucketLayout(realBucket.getBucketLayout())
@@ -3360,9 +3364,10 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
               .setValue(peerNode.getRpcPort())
               .build());
 
+      String role = peerNode.isRatisListener() ? RaftPeerRole.LISTENER.name() : RaftPeerRole.FOLLOWER.name();
       OMRoleInfo peerOmRole = OMRoleInfo.newBuilder()
           .setNodeId(peerNode.getNodeId())
-          .setServerRole(RaftPeerRole.FOLLOWER.name())
+          .setServerRole(role)
           .build();
       peerOmServiceInfoBuilder.setOmRoleInfo(peerOmRole);
 
@@ -4169,6 +4174,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         exitManager.exitSystem(1, errorMsg, e, LOG);
       }
     }
+    buildDBCheckpointInstallAuditLog(leaderId, term, lastAppliedIndex);
 
     // Delete the backup DB
     try {
@@ -4193,6 +4199,14 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         "Spend {} ms.", newTermIndex.getTerm(), newTermIndex.getIndex(),
         (Time.monotonicNow() - startTime));
     return newTermIndex;
+  }
+
+  private void buildDBCheckpointInstallAuditLog(String leaderId, long term, long lastAppliedIndex) {
+    Map<String, String> auditMap = new LinkedHashMap<>();
+    auditMap.put(AUDIT_PARAM_LEADER_ID, leaderId);
+    auditMap.put(AUDIT_PARAM_TERM, String.valueOf(term));
+    auditMap.put(AUDIT_PARAM_LAST_APPLIED_INDEX, String.valueOf(lastAppliedIndex));
+    SYSTEMAUDIT.logWriteSuccess(buildAuditMessageForSuccess(OMSystemAction.DB_CHECKPOINT_INSTALL, auditMap));
   }
 
   private void stopTrashEmptier() {

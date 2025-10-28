@@ -34,6 +34,7 @@ import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_HTTP_ADDRESS_KEY;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_HTTP_BIND_HOST_KEY;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_HTTP_BIND_PORT_DEFAULT;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_INTERNAL_SERVICE_ID;
+import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_LISTENER_NODES_KEY;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_NODES_KEY;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_PORT_DEFAULT;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_SERVICE_IDS_KEY;
@@ -383,6 +384,22 @@ public final class OmUtils {
   }
 
   /**
+   * Returns active OM node IDs that are not listener nodes for the given service
+   * ID.
+   *
+   * @param conf        Configuration source
+   * @param omServiceId OM service ID
+   * @return Collection of active non-listener node IDs
+   */
+  public static Collection<String> getActiveNonListenerOMNodeIds(
+      ConfigurationSource conf, String omServiceId) {
+    Collection<String> nodeIds = getActiveOMNodeIds(conf, omServiceId);
+    Collection<String> listenerNodeIds = getListenerOMNodeIds(conf, omServiceId);
+    nodeIds.removeAll(listenerNodeIds);
+    return nodeIds;
+  }
+
+  /**
    * Returns a collection of configured nodeId's that are to be decommissioned.
    * Aggregate results from both config keys - with and without serviceId
    * suffix. If ozone.om.service.ids contains a single service ID, then a config
@@ -402,6 +419,17 @@ public final class OmUtils {
           conf.getTrimmedStringCollection(OZONE_OM_DECOMMISSIONED_NODES_KEY));
     }
     return decommissionedNodeIds;
+  }
+
+  /**
+   * Get a collection of listener omNodeIds for the given omServiceId.
+   */
+  public static Collection<String> getListenerOMNodeIds(ConfigurationSource conf,
+      String omServiceId) {
+    String listenerNodesKey = ConfUtils.addKeySuffixes(
+        OZONE_OM_LISTENER_NODES_KEY, omServiceId);
+    return conf.getTrimmedStringCollection(
+        listenerNodesKey);
   }
 
   /**
@@ -505,6 +533,7 @@ public final class OmUtils {
    * repeatedOmKeyInfo instance.
    * 3. Set the updateID to the transactionLogIndex.
    * @param keyInfo args supplied by client
+   * @param bucketId bucket id
    * @param trxnLogIndex For Multipart keys, this is the transactionLogIndex
    *                     of the MultipartUploadAbort request which needs to
    *                     be set as the updateID of the partKeyInfos.
@@ -512,7 +541,7 @@ public final class OmUtils {
    *                     the same updateID as is in keyInfo.
    * @return {@link RepeatedOmKeyInfo}
    */
-  public static RepeatedOmKeyInfo prepareKeyForDelete(OmKeyInfo keyInfo,
+  public static RepeatedOmKeyInfo prepareKeyForDelete(long bucketId, OmKeyInfo keyInfo,
       long trxnLogIndex) {
     // If this key is in a GDPR enforced bucket, then before moving
     // KeyInfo to deletedTable, remove the GDPR related metadata and
@@ -530,7 +559,7 @@ public final class OmUtils {
     keyInfo.setUpdateID(trxnLogIndex);
 
     //The key doesn't exist in deletedTable, so create a new instance.
-    return new RepeatedOmKeyInfo(keyInfo);
+    return new RepeatedOmKeyInfo(keyInfo, bucketId);
   }
 
   /**
@@ -875,6 +904,9 @@ public final class OmUtils {
     Collection<String> decommissionedNodeIds = getDecommissionedNodeIds(conf,
             ConfUtils.addKeySuffixes(OZONE_OM_DECOMMISSIONED_NODES_KEY,
                     omServiceId));
+    Collection<String> listenerNodeIds = conf.getTrimmedStringCollection(
+        ConfUtils.addKeySuffixes(OZONE_OM_LISTENER_NODES_KEY,
+            omServiceId));
     if (omNodeIds.isEmpty()) {
       // If there are no nodeIds present, return empty list
       return Collections.emptyList();
@@ -892,6 +924,9 @@ public final class OmUtils {
         }
         if (decommissionedNodeIds.contains(omNodeDetails.getNodeId())) {
           omNodeDetails.setDecommissioningState();
+        }
+        if (listenerNodeIds.contains(omNodeDetails.getNodeId())) {
+          omNodeDetails.setRatisListener();
         }
         omNodesList.add(omNodeDetails);
       } catch (IOException e) {

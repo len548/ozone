@@ -769,16 +769,6 @@
     </description>
   </property>
   <property>
-    <name>ozone.scm.block.deletion.max.retry</name>
-    <value>4096</value>
-    <tag>OZONE, SCM</tag>
-    <description>
-      SCM wraps up many blocks in a deletion transaction and sends that to data
-      node for physical deletion periodically. This property determines how many
-      times SCM is going to retry sending a deletion operation to the data node.
-    </description>
-  </property>
-  <property>
     <name>ozone.scm.block.deletion.per.dn.distribution.factor</name>
     <value>8</value>
     <tag>OZONE, SCM</tag>
@@ -2351,7 +2341,6 @@
     <tag>OZONE, OM, MANAGEMENT</tag>
     <description>
       The maximum number of filesystem snapshot allowed in an Ozone Manager.
-      This limit is set to 65000 because the ext4 filesystem limits the number of hard links per file to 65,000.
     </description>
   </property>
 
@@ -2767,6 +2756,14 @@
     <tag>X509, SECURITY</tag>
     <description>
       Absolute path to HDDS metadata dir.
+    </description>
+  </property>
+  <property>
+    <name>hdds.datanode.db.config.path</name>
+    <value/>
+    <tag>OZONE, CONTAINER, STORAGE</tag>
+    <description>
+      Path to an ini configuration file for RocksDB on datanode component.
     </description>
   </property>
   <property>
@@ -3506,6 +3503,17 @@
     </description>
   </property>
   <property>
+    <name>ozone.recon.om.event.buffer.capacity</name>
+    <value>20000</value>
+    <tag>OZONE, RECON, OM, PERFORMANCE</tag>
+    <description>
+      Maximum capacity of the event buffer used by Recon to queue OM delta updates
+      during task reinitialization. When tasks are being reprocessed on staging DB,
+      this buffer holds incoming delta updates to prevent blocking the OM sync process.
+      If the buffer overflows, task reinitialization will be triggered.
+    </description>
+  </property>
+  <property>
     <name>ozone.scm.datanode.admin.monitor.interval</name>
     <value>30s</value>
     <tag>SCM</tag>
@@ -3759,10 +3767,25 @@
     </description>
   </property>
   <property>
+    <name>ozone.snapshot.defrag.limit.per.task</name>
+    <value>1</value>
+    <tag>OZONE, PERFORMANCE, OM</tag>
+    <description>The maximum number of snapshots that would be defragmented in
+      each task run of snapshot defragmentation service.
+    </description>
+  </property>
+  <property>
     <name>ozone.snapshot.filtering.service.interval</name>
     <value>1m</value>
     <tag>OZONE, PERFORMANCE, OM</tag>
     <description>Time interval of the SST File filtering service from Snapshot.
+    </description>
+  </property>
+  <property>
+    <name>ozone.snapshot.defrag.service.interval</name>
+    <value>-1</value>
+    <tag>OZONE, PERFORMANCE, OM</tag>
+    <description>Task interval of snapshot defragmentation service.
     </description>
   </property>
   <property>
@@ -3779,6 +3802,13 @@
     <value>300000ms</value>
     <tag>OZONE, PERFORMANCE,OM</tag>
     <description>A timeout value of sst filtering service.
+    </description>
+  </property>
+  <property>
+    <name>ozone.snapshot.defrag.service.timeout</name>
+    <value>300s</value>
+    <tag>OZONE, PERFORMANCE,OM</tag>
+    <description>Timeout value of a run of snapshot defragmentation service.
     </description>
   </property>
 
@@ -4409,7 +4439,7 @@
 
   <property>
     <name>ozone.om.snapshot.compaction.dag.prune.daemon.run.interval</name>
-    <value>3600s</value>
+    <value>10m</value>
     <tag>OZONE, OM</tag>
     <description>
       Interval at which compaction DAG pruning daemon thread is running to remove older snapshots with compaction
@@ -4815,5 +4845,15 @@
     <description>When KeyProvider is configured, the max retries allowed to attempt
       warm up edek cache if none of key successful on OM start up.
     </description>
+  </property>
+  <property>
+    <name>ozone.om.hierarchical.resource.locks.soft.limit</name>
+    <value>1024</value>
+    <description>Soft limit for number of lock objects that could be idle in the pool.</description>
+  </property>
+  <property>
+    <name>ozone.om.hierarchical.resource.locks.hard.limit</name>
+    <value>10000</value>
+    <description>Maximum number of lock objects that could be present in the pool.</description>
   </property>
 </configuration>
