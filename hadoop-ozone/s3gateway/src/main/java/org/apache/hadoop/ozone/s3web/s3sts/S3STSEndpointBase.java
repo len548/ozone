@@ -47,7 +47,6 @@ public class S3STSEndpointBase implements Auditor {
   @Inject
   private SignatureInfo signatureInfo;
 
-  private S3Auth s3Auth;
   // Test-only override to inject a ClientProtocol without JAX-RS lifecycle
   private ClientProtocol clientProtocolOverride;
 
@@ -55,7 +54,7 @@ public class S3STSEndpointBase implements Auditor {
       new AuditLogger(AuditLoggerType.S3GLOGGER);
 
   public void initialization() {
-    s3Auth = new S3Auth(signatureInfo.getStringToSign(),
+    S3Auth s3Auth = new S3Auth(signatureInfo.getStringToSign(),
         signatureInfo.getSignature(),
         signatureInfo.getAwsAccessId(), signatureInfo.getAwsAccessId());
     ClientProtocol clientProtocol = clientProtocolOverride != null

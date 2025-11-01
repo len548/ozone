@@ -37,7 +37,6 @@ import org.mockito.Mock;
  * Test for S3 STS endpoint.
  */
 public class TestSTS {
-  private OzoneClient clientStub;
   private S3STSEndpoint endpoint;
 
   @Mock
@@ -48,7 +47,7 @@ public class TestSTS {
     OzoneConfiguration config = new OzoneConfiguration();
     config.set(OZONE_S3_ADMINISTRATORS, "test-user");
     OzoneConfigurationHolder.setConfiguration(config);
-    clientStub = new OzoneClientStub();
+    OzoneClient clientStub = new OzoneClientStub();
     endpoint = new S3STSEndpoint();
     endpoint.setClient(clientStub);
     endpoint.setContext(context);

@@ -99,7 +99,7 @@ public class AWSSignatureProcessor implements SignatureProcessor {
       }
     }
     if (signatureInfo == null) {
-      signatureInfo = new SignatureInfo.Builder(Version.NONE).build();
+      signatureInfo = new SignatureInfo.Builder(Version.NONE).setService("s3").build();
     }
     String payloadHash = getPayloadHash(headers, signatureInfo);
     signatureInfo.setPayloadHash(payloadHash);
