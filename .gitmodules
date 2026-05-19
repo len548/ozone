@@ -1,0 +1,3 @@
+[submodule "ozone-grpc-poc"]
+	path = ozone-grpc-poc
+	url = https://github.com/rhalm/ozone-grpc-poc.git
