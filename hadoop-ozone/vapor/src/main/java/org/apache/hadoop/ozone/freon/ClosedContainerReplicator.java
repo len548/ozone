@@ -156,10 +156,9 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
     if (replicationTasks.isEmpty()) {
       throw new IllegalStateException("No closed containers found");
     }
-    long minTestNo = Math.min(replicationTasks.size(), getTestNo());
 
     //important: override the max number of tasks.
-    setTestNo(minTestNo);
+    setTestNo(replicationTasks.size());
 
     init();
 
